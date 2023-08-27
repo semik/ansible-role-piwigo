@@ -1,0 +1,44 @@
+---
+- name: install piwigo dependencies
+  apt:
+    name:
+      - libapache2-mod-php7.4
+      - php7.4-gd
+      - php7.4-mbstring
+      - php7.4-mysql
+      - unzip
+      - imagemagick
+      - exiftool
+      - ffmpeg
+      - poppler-utils
+    cache_valid_time: "{{ apt_cache_valid_time }}"
+    update_cache: yes
+  notify: restart apache2
+
+- name: download piwigo
+  ansible.builtin.get_url:
+    url: "https://piwigo.org/download/dlcounter.php?code={{ piwigo_version }}"
+    dest: "/root/install/piwigo-{{ piwigo_version }}.zip"
+
+- name: create piwigo galery root
+  ansible.builtin.file:
+    path: "{{ piwigo_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0755  
+
+- name: extract piwigo
+  ansible.builtin.unarchive:
+    src: "/root/install/piwigo-{{ piwigo_version }}.zip"
+    remote_src: yes
+    dest: "{{ piwigo_root }}"
+
+- name: upload tempated configuration
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - src: "database.inc.php.j2"
+      dest: "{{ piwigo_root }}/piwigo/local/config/database.inc.php"
+  notify: restart apache2
